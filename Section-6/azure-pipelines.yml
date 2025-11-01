@@ -1,0 +1,19 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+pool: DetectionPool
+
+steps:
+- task: PythonScript@0
+  inputs:
+    scriptSource: 'filePath'
+    scriptPath: './process_updates.py'
+  env:
+    BUILD_SOURCE_VERSION: $(Build.SourceVersion)
+    SPLUNK_API: $(splunkapi)
+

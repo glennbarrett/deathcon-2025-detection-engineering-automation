@@ -1,0 +1,36 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+pool: DetectionPool
+
+steps:
+- task: PythonScript@0
+  inputs:
+    scriptSource: 'filePath'
+    scriptPath: './attack.py'
+
+- task: CopyFilesOverSSH@0
+  inputs:
+    sshEndpoint: 'new-linux-server'
+    contents: 'layer.json'
+    targetFolder: '/var/www/html/assets/'
+    cleanTargetFolder: true
+    cleanHiddenFilesInTarget: true
+    readyTimeout: '20000'
+    
+- task: CmdLine@2
+  inputs:
+    script: 'pip install attackcti'
+- task: PythonScript@0
+  inputs:
+    scriptSource: 'filePath'
+    scriptPath: './process_updates.py'
+  env:
+    BUILD_SOURCE_VERSION: $(Build.SourceVersion)
+    SPLUNK_API: $(splunkapi)
+
