@@ -1,20 +1,28 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
+# Minimal Azure Pipelines YAML for scanning local detection docs, generating an ATT&CK layer,
+# copying the layer to a remote web server, and running CI validation steps.
+# Notes:
+#  - Triggered on pushes to the main branch.
+#  - Uses a custom agent pool named "DetectionPool" — ensure the pool has Python and required tools.
+#  - Secrets (e.g., SSH service connection, pipeline variables) should be configured in the pipeline/project settings.
+#  - process_updates.py expects pipeline variables BUILD_SOURCE_VERSION and SPLUNK_API to be populated.
+#  - Some scripts in the repo may be platform-specific (Windows PowerShell); ensure the selected agent matches requirements.
 
 trigger:
-- main
+- main  # run pipeline for commits/PRs merged to main
 
-pool: DetectionPool
+pool: DetectionPool  # agent pool to run the jobs; replace with an appropriate hosted/onsite pool
 
 steps:
 - task: PythonScript@0
+  # Run the attack.py script to scan markdown files, query ATT&CK, and update layer.json.
+  # Requires Python and the attackcti package available on the agent.
   inputs:
     scriptSource: 'filePath'
     scriptPath: './attack.py'
 
 - task: CopyFilesOverSSH@0
+  # Copy the generated layer.json to a remote server over SSH.
+  # Configure 'new-linux-server' as a service connection in Azure DevOps.
   inputs:
     sshEndpoint: 'new-linux-server'
     contents: 'layer.json'
@@ -24,13 +32,21 @@ steps:
     readyTimeout: '20000'
     
 - task: CmdLine@2
+  # Install the attackcti package on the agent. This should run on an agent with pip available.
+  # Note: if attack.py runs before this step and requires attackcti, consider installing earlier.
   inputs:
     script: 'pip install attackcti'
+
 - task: PythonScript@0
+  # Run process_updates.py which:
+  #  - reads changed files via BUILD_SOURCE_VERSION
+  #  - creates Splunk saved searches and invokes tests
+  # Requires BUILD_SOURCE_VERSION (commit SHA) and SPLUNK_API (token/endpoint) provided as env vars.
+  # Warning: process_updates.py may invoke Windows PowerShell for tests — ensure agent OS is compatible.
   inputs:
     scriptSource: 'filePath'
     scriptPath: './process_updates.py'
   env:
-    BUILD_SOURCE_VERSION: $(Build.SourceVersion)
-    SPLUNK_API: $(splunkapi)
+    BUILD_SOURCE_VERSION: $(Build.SourceVersion)  # commit SHA provided by Azure Pipelines
+    SPLUNK_API: $(splunkapi)                      # pipeline secret variable for Splunk API token/endpoint
 

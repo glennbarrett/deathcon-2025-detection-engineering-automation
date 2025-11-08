@@ -1,19 +1,21 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
+# Azure Pipelines YAML for building / running the process_updates.py script.
+# Minimal starter pipeline: triggers on main and runs a Python script on the specified agent pool.
+# Docs: https://aka.ms/yaml
 
+# Which branches trigger the pipeline
 trigger:
-- main
+  - main   # run pipeline on pushes/PRs to the main branch
 
-pool: DetectionPool
+# Agent pool to run jobs on (replace with your org's pool or use 'AzurePipelines' for Microsoft-hosted)
+pool: DetectionPool  # name of the agent pool or VM scale set
 
 steps:
+  # Use the built-in PythonScript task to run a Python file from the repo
 - task: PythonScript@0
   inputs:
-    scriptSource: 'filePath'
-    scriptPath: './process_updates.py'
+    scriptSource: 'filePath'          # run a script file from the repository
+    scriptPath: './process_updates.py' # relative path to the Python script to execute
   env:
-    BUILD_SOURCE_VERSION: $(Build.SourceVersion)
-    SPLUNK_API: $(splunkapi)
+    BUILD_SOURCE_VERSION: $(Build.SourceVersion)  # expose the commit SHA as an env var to the script
+    SPLUNK_API: $(splunkapi)                      # pipeline variable (secret or defined in pipeline) for Splunk API endpoint/token
 
